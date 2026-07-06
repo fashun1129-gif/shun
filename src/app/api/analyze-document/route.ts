@@ -155,14 +155,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `AI analysis failed: ${reason}` }, { status: 502 });
   }
 
+  const wikiSections = Array.isArray(result.wiki_sections) ? result.wiki_sections : [];
+  const questions = Array.isArray(result.questions) ? result.questions : [];
+
   await supabaseAdmin
     .from("documents")
     .update({ extracted_content: result.summary })
     .eq("id", doc.id);
 
-  if (result.wiki_sections?.length) {
+  if (wikiSections.length) {
     await supabaseAdmin.from("wiki_sections").insert(
-      result.wiki_sections.map((s) => ({
+      wikiSections.map((s) => ({
         subject_id: doc.subject_id,
         heading: s.heading,
         content: s.content,
@@ -173,24 +176,27 @@ export async function POST(req: NextRequest) {
   }
 
   let insertedQuestions = 0;
-  if (result.questions?.length) {
-    const rows = result.questions.map((q, i) => ({
-      id: `${doc.id}-q${i}`,
-      subject_id: doc.subject_id,
-      question: q.question,
-      choices: q.choices,
-      answer: q.answer,
-      explanation: q.explanation,
-      textbook: doc.textbook_name ?? doc.title,
-      year: q.year ?? doc.year ?? null,
-      difficulty: q.difficulty,
-      source_document_id: doc.id,
-    }));
+  if (questions.length) {
+    const validDifficulties = new Set(["易", "普", "難"]);
+    const rows = questions
+      .filter((q) => Array.isArray(q.choices) && q.choices.length === 4)
+      .map((q, i) => ({
+        id: `${doc.id}-q${i}`,
+        subject_id: doc.subject_id,
+        question: q.question,
+        choices: q.choices,
+        answer: q.answer,
+        explanation: q.explanation,
+        textbook: doc.textbook_name ?? doc.title,
+        year: q.year ?? doc.year ?? null,
+        difficulty: validDifficulties.has(q.difficulty) ? q.difficulty : "普",
+        source_document_id: doc.id,
+      }));
     const { error: insertError, count } = await supabaseAdmin
       .from("questions")
       .upsert(rows, { onConflict: "id", count: "exact" });
     if (insertError) {
-      console.error("Failed to insert generated questions", insertError);
+      console.error("Failed to insert generated questions", JSON.stringify(insertError));
     } else {
       insertedQuestions = count ?? rows.length;
     }
@@ -198,7 +204,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    wikiSections: result.wiki_sections?.length ?? 0,
+    wikiSections: wikiSections.length,
     questions: insertedQuestions,
   });
 }
