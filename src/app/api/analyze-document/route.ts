@@ -63,6 +63,11 @@ export async function POST(req: NextRequest) {
     .single();
   const subjectName = subject?.name ?? doc.subject_id;
 
+  const { data: existingSections } = await supabaseAdmin
+    .from("wiki_sections")
+    .select("heading, content")
+    .eq("subject_id", doc.subject_id);
+
   const { data: fileData, error: downloadError } = await supabaseAdmin.storage
     .from("documents")
     .download(doc.file_path);
@@ -73,6 +78,13 @@ export async function POST(req: NextRequest) {
 
   const base64 = Buffer.from(await fileData.arrayBuffer()).toString("base64");
   const docTypeLabel = DOC_TYPE_LABEL[doc.doc_type] ?? doc.doc_type;
+  const citationLabel = doc.doc_type === "past_exam"
+    ? `${doc.year ?? doc.title}`
+    : (doc.textbook_name ?? doc.title);
+
+  const existingSectionsBlock = existingSections?.length
+    ? existingSections.map((s) => `### ${s.heading}\n${s.content}`).join("\n\n")
+    : "（まだありません）";
 
   const instructions = `これは薬学大学院入試対策アプリの教材です。
 科目: ${subjectName}
@@ -82,7 +94,17 @@ export async function POST(req: NextRequest) {
 このPDFを解析してください。全科目共通でまとめられた資料の可能性もあるので、その場合は「${subjectName}」に関係する部分だけを対象にしてください。
 
 1. summary: この資料の要点を、AIチャットが参照できるよう日本語で数段落にまとめてください。
-2. wiki_sections: 学習まとめとして1〜4セクション作成してください。各contentは **太字**, "- " の箇条書き, "| a | b |" 形式のテーブルを使った日本語のMarkdown風テキストにしてください。
+
+2. wiki_sections: 学習まとめを「分野・テーマ」ごとに整理してください（例:「バイオアベイラビリティ」「製剤設計」「薬物動態パラメータ」など）。年度や問題番号ごとにセクションを分けないでください。
+
+この科目の既存のWikiセクション:
+${existingSectionsBlock}
+
+- 既存セクションと同じ・近いテーマの内容が見つかった場合は、headingを既存のものと完全に同じ文字列にして、contentは既存の内容を活かしつつこの資料で分かった内容を統合・追記した「完全な内容」を返してください（既存内容を消さないこと）。
+- 既存にない新しいテーマの場合のみ、新しいheadingを作成してください。
+- 各contentの該当箇所には出典を注釈として明記してください。書類の種類が「過去問」の場合は「（出典: ${citationLabel}年度 第◯問）」のように年度と問題番号を、「授業レジュメ」「教科書」の場合は「（出典: ${citationLabel}、該当章やページが分かれば章名・ページ数も）」のように記載してください。
+- content内で **太字**, "- " の箇条書き, "| a | b |" 形式のテーブルを使った日本語のMarkdown風テキストにしてください。
+
 3. questions: 書類の種類が「過去問」の場合のみ、実際に含まれる設問をもとに4択のクイズ問題を作成してください（選択肢が4択でない場合は、正解を保ったまま妥当な誤答を補って4択にしてください）。過去問以外の場合は空配列にしてください。`;
 
   let result: ExtractResult;
@@ -163,16 +185,23 @@ export async function POST(req: NextRequest) {
     .update({ extracted_content: result.summary })
     .eq("id", doc.id);
 
-  if (wikiSections.length) {
-    await supabaseAdmin.from("wiki_sections").insert(
-      wikiSections.map((s) => ({
+  for (const s of wikiSections) {
+    const match = existingSections?.find((e) => e.heading === s.heading);
+    if (match) {
+      await supabaseAdmin
+        .from("wiki_sections")
+        .update({ content: s.content, source_document_id: doc.id })
+        .eq("subject_id", doc.subject_id)
+        .eq("heading", s.heading);
+    } else {
+      await supabaseAdmin.from("wiki_sections").insert({
         subject_id: doc.subject_id,
         heading: s.heading,
         content: s.content,
         textbook: doc.textbook_name ?? doc.title,
         source_document_id: doc.id,
-      }))
-    );
+      });
+    }
   }
 
   let insertedQuestions = 0;
