@@ -14,6 +14,22 @@ import {
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
+function extractErrorMessage(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === "object" && err !== null) {
+    const obj = err as Record<string, unknown>;
+    for (const key of ["message", "msg", "error_description", "error"]) {
+      if (typeof obj[key] === "string" && obj[key]) return obj[key] as string;
+    }
+    try {
+      return JSON.stringify(err);
+    } catch {
+      // fall through
+    }
+  }
+  return String(err);
+}
+
 const DOC_TYPE_LABEL: Record<DocType, string> = {
   past_exam: "過去問",
   resume: "レジュメ",
@@ -93,7 +109,7 @@ export default function UploadComponent() {
         }
       } catch (err) {
         console.error("Document upload failed", err);
-        const reason = err instanceof Error ? err.message : "不明なエラー";
+        const reason = extractErrorMessage(err);
         setFormError(`「${file.name}」のアップロードに失敗しました（${reason}）`);
       } finally {
         setUploadingCount((c) => c - 1);
