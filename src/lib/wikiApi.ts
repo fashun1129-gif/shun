@@ -4,18 +4,20 @@ export type WikiSection = {
   heading: string;
   content: string;
   textbook?: string;
+  sources?: string[];
 };
 
 type WikiSectionRow = {
   heading: string;
   content: string;
   textbook: string | null;
+  sources: string[] | null;
 };
 
 export async function listWikiSections(subjectId: string): Promise<WikiSection[]> {
   const { data, error } = await supabase
     .from("wiki_sections")
-    .select("heading, content, textbook")
+    .select("heading, content, textbook, sources")
     .eq("subject_id", subjectId)
     .order("created_at", { ascending: true });
   if (error || !data) return [];
@@ -23,5 +25,6 @@ export async function listWikiSections(subjectId: string): Promise<WikiSection[]
     heading: row.heading,
     content: row.content,
     textbook: row.textbook ?? undefined,
+    sources: row.sources ?? [],
   }));
 }

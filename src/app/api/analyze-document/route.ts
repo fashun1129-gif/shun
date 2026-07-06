@@ -25,14 +25,8 @@ type ExtractedQuestion = {
   year?: number;
 };
 
-type ExtractedWikiSection = {
-  heading: string;
-  content: string;
-};
-
 type ExtractResult = {
   summary: string;
-  wiki_sections: ExtractedWikiSection[];
   questions: ExtractedQuestion[];
 };
 
@@ -64,11 +58,6 @@ export async function POST(req: NextRequest) {
     .single();
   const subjectName = subject?.name ?? doc.subject_id;
 
-  const { data: existingSections } = await supabaseAdmin
-    .from("wiki_sections")
-    .select("heading, content")
-    .eq("subject_id", doc.subject_id);
-
   const { data: fileData, error: downloadError } = await supabaseAdmin.storage
     .from("documents")
     .download(doc.file_path);
@@ -79,14 +68,6 @@ export async function POST(req: NextRequest) {
 
   const base64 = Buffer.from(await fileData.arrayBuffer()).toString("base64");
   const docTypeLabel = DOC_TYPE_LABEL[doc.doc_type] ?? doc.doc_type;
-  const citationLabel = doc.doc_type === "past_exam"
-    ? `${doc.year ?? doc.title}`
-    : (doc.textbook_name ?? doc.title);
-
-  const existingSectionsBlock = existingSections?.length
-    ? existingSections.map((s) => `### ${s.heading}\n${s.content}`).join("\n\n")
-    : "（まだありません）";
-
   const otherSubjectNames = subjects.filter((s) => s.id !== doc.subject_id).map((s) => s.name);
 
   const instructions = `これは薬学大学院入試対策アプリの教材です。
@@ -95,27 +76,17 @@ export async function POST(req: NextRequest) {
 ファイル名: ${doc.title}
 
 重要: このPDFは複数科目（${otherSubjectNames.join("・")}・${subjectName}）の設問がまとめて1つのファイルに入っている可能性が高いです。
-今回はこの中の「${subjectName}」に該当する設問・内容だけを対象にしてください。${otherSubjectNames.join("・")}に関する設問・内容は、たとえ${subjectName}と関連が深そうに見えても、summary・wiki_sections・questionsのいずれにも絶対に含めないでください。科目の判別に迷う設問があれば、無理に含めず除外してください。
+今回はこの中の「${subjectName}」に該当する設問・内容だけを対象にしてください。${otherSubjectNames.join("・")}に関する設問・内容は、たとえ${subjectName}と関連が深そうに見えても、summary・questionsのいずれにも絶対に含めないでください。科目の判別に迷う設問があれば、無理に含めず除外してください。
 
-1. summary: この資料の要点を、AIチャットが参照できるよう日本語で数段落にまとめてください。
+1. summary: この資料に含まれる「${subjectName}」の内容を、後でWiki作成やAIチャットの参考資料として使えるよう、設問ごとに分野名を付けながら日本語で詳しくまとめてください（例:「バイオアベイラビリティに関する問題: ...」）。
 
-2. wiki_sections: 学習まとめを「分野・テーマ」ごとに整理してください（例:「バイオアベイラビリティ」「製剤設計」「薬物動態パラメータ」など）。年度や問題番号ごとにセクションを分けないでください。
-
-この科目の既存のWikiセクション:
-${existingSectionsBlock}
-
-- 既存セクションと同じ・近いテーマの内容が見つかった場合は、headingを既存のものと完全に同じ文字列にして、contentは既存の内容を活かしつつこの資料で分かった内容を統合・追記した「完全な内容」を返してください（既存内容を消さないこと）。
-- 既存にない新しいテーマの場合のみ、新しいheadingを作成してください。
-- 各contentの該当箇所には出典を注釈として明記してください。書類の種類が「過去問」の場合は「（出典: ${citationLabel}年度 第◯問）」のように年度と問題番号を、「授業レジュメ」「教科書」の場合は「（出典: ${citationLabel}、該当章やページが分かれば章名・ページ数も）」のように記載してください。
-- content内で **太字**, "- " の箇条書き, "| a | b |" 形式のテーブルを使った日本語のMarkdown風テキストにしてください。
-
-3. questions: 書類の種類が「過去問」の場合のみ、実際に含まれる設問をもとに4択のクイズ問題を作成してください（選択肢が4択でない場合は、正解を保ったまま妥当な誤答を補って4択にしてください）。過去問以外の場合は空配列にしてください。`;
+2. questions: 書類の種類が「過去問」の場合のみ、実際に含まれる設問をもとに4択のクイズ問題を作成してください（選択肢が4択でない場合は、正解を保ったまま妥当な誤答を補って4択にしてください）。過去問以外の場合は空配列にしてください。`;
 
   let result: ExtractResult;
   try {
     const message = await anthropic.messages.create({
       model: "claude-sonnet-5",
-      max_tokens: 8000,
+      max_tokens: 12000,
       tools: [
         {
           name: "extract_study_material",
@@ -124,17 +95,6 @@ ${existingSectionsBlock}
             type: "object",
             properties: {
               summary: { type: "string" },
-              wiki_sections: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    heading: { type: "string" },
-                    content: { type: "string" },
-                  },
-                  required: ["heading", "content"],
-                },
-              },
               questions: {
                 type: "array",
                 items: {
@@ -151,7 +111,7 @@ ${existingSectionsBlock}
                 },
               },
             },
-            required: ["summary", "wiki_sections", "questions"],
+            required: ["summary", "questions"],
           },
         },
       ],
@@ -170,6 +130,9 @@ ${existingSectionsBlock}
       ],
     });
 
+    if (message.stop_reason === "max_tokens") {
+      throw new Error("response was truncated (max_tokens reached)");
+    }
     const toolUse = message.content.find((b) => b.type === "tool_use");
     if (!toolUse || toolUse.type !== "tool_use") {
       throw new Error("model did not return structured output");
@@ -181,32 +144,12 @@ ${existingSectionsBlock}
     return NextResponse.json({ error: `AI analysis failed: ${reason}` }, { status: 502 });
   }
 
-  const wikiSections = Array.isArray(result.wiki_sections) ? result.wiki_sections : [];
   const questions = Array.isArray(result.questions) ? result.questions : [];
 
   await supabaseAdmin
     .from("documents")
     .update({ extracted_content: result.summary })
     .eq("id", doc.id);
-
-  for (const s of wikiSections) {
-    const match = existingSections?.find((e) => e.heading === s.heading);
-    if (match) {
-      await supabaseAdmin
-        .from("wiki_sections")
-        .update({ content: s.content, source_document_id: doc.id })
-        .eq("subject_id", doc.subject_id)
-        .eq("heading", s.heading);
-    } else {
-      await supabaseAdmin.from("wiki_sections").insert({
-        subject_id: doc.subject_id,
-        heading: s.heading,
-        content: s.content,
-        textbook: doc.textbook_name ?? doc.title,
-        source_document_id: doc.id,
-      });
-    }
-  }
 
   let insertedQuestions = 0;
   if (questions.length) {
@@ -237,7 +180,6 @@ ${existingSectionsBlock}
 
   return NextResponse.json({
     ok: true,
-    wikiSections: wikiSections.length,
     questions: insertedQuestions,
   });
 }

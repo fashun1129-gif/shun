@@ -58,6 +58,18 @@ export async function triggerAnalysis(documentId: string): Promise<void> {
   }
 }
 
+export async function triggerWikiConsolidation(subjectId: string): Promise<void> {
+  const res = await fetch("/api/consolidate-wiki", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subjectId }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error ?? `wiki consolidation failed (${res.status})`);
+  }
+}
+
 export async function listDocuments(): Promise<DocumentRecord[]> {
   const { data, error } = await supabase
     .from("documents")

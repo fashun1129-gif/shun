@@ -88,6 +88,16 @@ export default function WikiComponent({ subjectId }: Props) {
               <div className="prose prose-slate max-w-none">
                 <WikiContent content={section.content} />
               </div>
+              {section.sources && section.sources.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-4 pt-3 border-t border-gray-100">
+                  <span className="text-xs text-gray-400">出典:</span>
+                  {section.sources.map((src, j) => (
+                    <span key={j} className="text-xs bg-gray-50 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full">
+                      {src}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

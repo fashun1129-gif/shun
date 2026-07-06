@@ -8,6 +8,7 @@ import {
   deleteDocument,
   listDocuments,
   triggerAnalysis,
+  triggerWikiConsolidation,
   updateDocument,
   uploadDocument,
   uploadPastExamForAllSubjects,
@@ -126,6 +127,7 @@ export default function UploadComponent() {
         setAnalyzingCount((c) => c + 1);
         try {
           await triggerAnalysis(doc.id);
+          await triggerWikiConsolidation(doc.subjectId);
         } catch (err) {
           console.error("Document analysis failed", err);
           const reason = extractErrorMessage(err);
