@@ -10,6 +10,7 @@ import UploadComponent from "@/components/UploadComponent";
 import ShareModal from "@/components/ShareModal";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { isAllowedEmail } from "@/lib/auth";
 
 type Tab = "quiz" | "wiki" | "ai-chat" | "weakness" | "upload";
 
@@ -37,9 +38,14 @@ export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
         router.replace("/");
+        return;
+      }
+      if (!isAllowedEmail(session.user.email)) {
+        await supabase.auth.signOut();
+        router.replace("/?error=domain");
         return;
       }
       const name = session.user.user_metadata?.full_name ?? session.user.email ?? "ユーザー";
@@ -52,7 +58,13 @@ export default function DashboardPage() {
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) router.replace("/");
+      if (!session) {
+        router.replace("/");
+        return;
+      }
+      if (!isAllowedEmail(session.user.email)) {
+        supabase.auth.signOut().then(() => router.replace("/?error=domain"));
+      }
     });
     return () => listener.subscription.unsubscribe();
   }, [router]);
@@ -134,12 +146,7 @@ export default function DashboardPage() {
               {subjects.map((sub) => (
                 <button
                   key={sub.id}
-                  onClick={() => {
-                    setSelectedSubject(sub.id);
-                    if (activeTab !== "weakness" && activeTab !== "upload") {
-                      // keep tab
-                    }
-                  }}
+                  onClick={() => setSelectedSubject(sub.id)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 text-left ${
                     selectedSubject === sub.id
                       ? "bg-indigo-600 text-white"
@@ -232,6 +239,7 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <QuizComponent
+                    key={selectedSubject}
                     questions={currentQuestions}
                     subjectName={currentSubject.name}
                     onResult={handleQuizResult}
@@ -242,13 +250,14 @@ export default function DashboardPage() {
 
             {activeTab === "wiki" && (
               <div className="max-w-3xl mx-auto">
-                <WikiComponent subjectId={selectedSubject} />
+                <WikiComponent key={selectedSubject} subjectId={selectedSubject} />
               </div>
             )}
 
             {activeTab === "ai-chat" && (
               <div className="max-w-2xl mx-auto h-full">
                 <AIChatComponent
+                  key={selectedSubject}
                   subjectId={selectedSubject}
                   subjectName={currentSubject.name}
                 />

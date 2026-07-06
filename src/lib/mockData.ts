@@ -1,28 +1,35 @@
 export const subjects = [
-  { id: "organic-chemistry", name: "有機化学", icon: "⚗️", color: "bg-purple-500", textbook: "ボルハルト・ショアー現代有機化学(上)(下)" },
-  { id: "pharmaceutics", name: "薬剤学", icon: "💊", color: "bg-blue-500", textbook: "薬剤学第5版" },
-  { id: "physical-chemistry", name: "物理化学", icon: "⚛️", color: "bg-orange-500", textbook: "アトキンス物理化学要論第7版" },
-  { id: "analytical-chemistry", name: "分析化学", icon: "🔬", color: "bg-green-500", textbook: "パートナー分析化学Ⅰ・Ⅱ" },
-  { id: "biochemistry", name: "生化学", icon: "🧬", color: "bg-red-500", textbook: "レーニンジャーの新生化学[上][下]第7版" },
-  { id: "cell-biology", name: "細胞生物学", icon: "🦠", color: "bg-teal-500", textbook: "Essential細胞生物学" },
-  { id: "pharmacology", name: "薬理学", icon: "💉", color: "bg-pink-500", textbook: "NEW薬理学改訂第7版" },
-  { id: "pharmacokinetics", name: "薬物動態学", icon: "📈", color: "bg-indigo-500", textbook: "コンパス薬物速度論演習 / 個別化医療を目指した臨床薬物動態学1" },
+  { id: "physics", name: "物理", icon: "⚛️", color: "bg-orange-500", textbook: "アトキンス物理化学要論第7版 / パートナー分析化学Ⅰ・Ⅱ 改訂第4版増補" },
+  { id: "chemistry", name: "化学", icon: "⚗️", color: "bg-purple-500", textbook: "ボルハルト・ショアー現代有機化学（上）（下）" },
+  { id: "biology", name: "生物", icon: "🧬", color: "bg-red-500", textbook: "レーニンジャーの新生化学〔上〕〔下〕第7版 / Essential細胞生物学 原書第5版" },
+  { id: "pharmacology", name: "薬理", icon: "💉", color: "bg-pink-500", textbook: "NEW薬理学改訂第7版" },
+  { id: "pharmaceutics", name: "薬剤", icon: "💊", color: "bg-blue-500", textbook: "薬剤学（第5版）/ コンパス薬物速度論演習 / コンパス生物薬剤学" },
+  { id: "clinical", name: "臨床", icon: "🏥", color: "bg-teal-500", textbook: "新臨床腫瘍学 改訂第7版 / visual core pharma薬物治療学改訂14版 / 個別化医療を目指した臨床薬物動態学1（基礎編）/ スタンダード薬学シリーズII 薬学総論 薬学と社会 第2版" },
 ];
 
-export const textbooks = [
-  "アトキンス物理化学要論第7版",
-  "パートナー分析化学Ⅰ・Ⅱ",
-  "ボルハルト・ショアー現代有機化学(上)(下)",
-  "レーニンジャーの新生化学[上][下]第7版",
-  "Essential細胞生物学",
-  "NEW薬理学改訂第7版",
-  "薬剤学第5版",
-  "コンパス薬物速度論演習",
-  "コンパス生物薬剤学",
-  "新臨床腫瘍学",
-  "visual core pharma薬物治療学",
-  "個別化医療を目指した臨床薬物動態学1",
-  "スタンダード薬学シリーズII",
+export type Textbook = {
+  title: string;
+  isbn: string;
+  subjectId: string;
+};
+
+export const textbooks: Textbook[] = [
+  { title: "アトキンス物理化学要論第7版", isbn: "978-4-807-90977-3", subjectId: "physics" },
+  { title: "パートナー分析化学Ⅰ 改訂第4版増補", isbn: "978-4-524-40453-7", subjectId: "physics" },
+  { title: "パートナー分析化学Ⅱ 改訂第4版増補", isbn: "978-4-524-40454-4", subjectId: "physics" },
+  { title: "ボルハルト・ショアー現代有機化学（上）", isbn: "978-4-759-82029-4", subjectId: "chemistry" },
+  { title: "ボルハルト・ショアー現代有機化学（下）", isbn: "978-4-759-82030-0", subjectId: "chemistry" },
+  { title: "レーニンジャーの新生化学〔上〕第7版", isbn: "978-4-567-24408-4", subjectId: "biology" },
+  { title: "レーニンジャーの新生化学〔下〕第7版", isbn: "978-4-567-24409-1", subjectId: "biology" },
+  { title: "Essential細胞生物学 原書第5版", isbn: "978-4-524-22682-5", subjectId: "biology" },
+  { title: "NEW薬理学改訂第7版", isbn: "978-4-524-26175-8", subjectId: "pharmacology" },
+  { title: "薬剤学（第5版）", isbn: "978-4-567-48036-9", subjectId: "pharmaceutics" },
+  { title: "コンパス薬物速度論演習", isbn: "978-4-524-40277-9", subjectId: "pharmaceutics" },
+  { title: "コンパス生物薬剤学", isbn: "978-4-524-40374-5", subjectId: "pharmaceutics" },
+  { title: "新臨床腫瘍学 改訂第7版", isbn: "978-4-524-20426-7", subjectId: "clinical" },
+  { title: "visual core pharma薬物治療学改訂14版", isbn: "978-4-525-72104-6", subjectId: "clinical" },
+  { title: "個別化医療を目指した臨床薬物動態学1（基礎編）", isbn: "978-4-567-48490-9", subjectId: "clinical" },
+  { title: "スタンダード薬学シリーズII 薬学総論 薬学と社会 第2版", isbn: "978-4-807-91727-3", subjectId: "clinical" },
 ];
 
 export type Question = {
@@ -38,37 +45,37 @@ export type Question = {
 };
 
 export const quizData: Record<string, Question[]> = {
-  "organic-chemistry": [
+  "chemistry": [
     {
       id: "oc-1",
-      subject: "有機化学",
+      subject: "化学",
       question: "SN2反応において、求核試薬が背面から攻撃することで起こる立体化学的結果として正しいものはどれか？",
       choices: ["配置保持", "ラセミ化", "ワルデン反転", "エピマー化"],
       answer: 2,
       explanation: "SN2反応では求核試薬が脱離基の反対側（背面）から攻撃するため、中心炭素の立体配置が逆転する（ワルデン反転）。これはSN2反応の特徴的な立体化学であり、光学活性化合物では鏡像体が生成する。",
-      textbook: "ボルハルト・ショアー現代有機化学(上)(下)",
+      textbook: "ボルハルト・ショアー現代有機化学（上）（下）",
       year: 2022,
       difficulty: "普",
     },
     {
       id: "oc-2",
-      subject: "有機化学",
+      subject: "化学",
       question: "アルデヒドとケトンを区別するために用いられる試薬として最も適切なものはどれか？",
       choices: ["ルーカス試薬", "フェーリング液", "ニンヒドリン試薬", "ヨードホルム試薬"],
       answer: 1,
-      explanation: "フェーリング液（酒石酸ナトリウムカリウムを含むCu²⁺溶液）はアルデヒドによって還元されCu₂O（赤色沈殿）を生じるが、ケトンでは反応しない。これによりアルデヒドとケトンを区別できる。参照: ボルハルト・ショアー現代有機化学(上)(下) 第17章",
-      textbook: "ボルハルト・ショアー現代有機化学(上)(下)",
+      explanation: "フェーリング液（酒石酸ナトリウムカリウムを含むCu²⁺溶液）はアルデヒドによって還元されCu₂O（赤色沈殿）を生じるが、ケトンでは反応しない。これによりアルデヒドとケトンを区別できる。参照: ボルハルト・ショアー現代有機化学（上）（下） 第17章",
+      textbook: "ボルハルト・ショアー現代有機化学（上）（下）",
       year: 2021,
       difficulty: "易",
     },
     {
       id: "oc-3",
-      subject: "有機化学",
+      subject: "化学",
       question: "ディールス・アルダー反応において、ジエンが反応可能なコンホメーションはどれか？",
       choices: ["s-trans", "s-cis", "E配置", "Z配置"],
       answer: 1,
       explanation: "ディールス・アルダー反応（[4+2]付加環化反応）では、ジエンがs-cis（s-シス）コンホメーションをとる必要がある。s-trans型では軌道の幾何学的関係からジエノフィルと反応できない。",
-      textbook: "ボルハルト・ショアー現代有機化学(上)(下)",
+      textbook: "ボルハルト・ショアー現代有機化学（上）（下）",
       year: 2020,
       difficulty: "難",
     },
@@ -76,7 +83,7 @@ export const quizData: Record<string, Question[]> = {
   "pharmaceutics": [
     {
       id: "ph-1",
-      subject: "薬剤学",
+      subject: "薬剤",
       question: "バイオアベイラビリティ（生物学的利用能）を規定する主要因子の組み合わせとして正しいものはどれか？",
       choices: [
         "溶解性・膜透過性・初回通過効果",
@@ -85,14 +92,14 @@ export const quizData: Record<string, Question[]> = {
         "pKa・脂溶性・血中濃度",
       ],
       answer: 0,
-      explanation: "経口投与薬のバイオアベイラビリティはF = fa × fg × fh で表される。faは消化管吸収率（溶解性・膜透過性）、fgは腸管初回通過効果の回避率、fhは肝初回通過効果の回避率を示す。参照: 薬剤学第5版",
-      textbook: "薬剤学第5版",
+      explanation: "経口投与薬のバイオアベイラビリティはF = fa × fg × fh で表される。faは消化管吸収率（溶解性・膜透過性）、fgは腸管初回通過効果の回避率、fhは肝初回通過効果の回避率を示す。参照: 薬剤学（第5版）",
+      textbook: "薬剤学（第5版）",
       year: 2023,
       difficulty: "普",
     },
     {
       id: "ph-2",
-      subject: "薬剤学",
+      subject: "薬剤",
       question: "BCS（生物薬剤学分類システム）においてClass IIに分類される薬物の特徴はどれか？",
       choices: [
         "高溶解性・高透過性",
@@ -101,16 +108,14 @@ export const quizData: Record<string, Question[]> = {
         "低溶解性・低透過性",
       ],
       answer: 1,
-      explanation: "BCS Class IIは低溶解性・高透過性の薬物。溶解が律速となるため、製剤工夫（微粉砕、固体分散体、ナノ粒子化など）により吸収改善が期待できる。代表薬：グリセオフルビン、フェニトイン。参照: 薬剤学第5版 第3章",
-      textbook: "薬剤学第5版",
+      explanation: "BCS Class IIは低溶解性・高透過性の薬物。溶解が律速となるため、製剤工夫（微粉砕、固体分散体、ナノ粒子化など）により吸収改善が期待できる。代表薬：グリセオフルビン、フェニトイン。参照: 薬剤学（第5版） 第3章",
+      textbook: "薬剤学（第5版）",
       year: 2022,
       difficulty: "普",
     },
-  ],
-  "pharmacokinetics": [
     {
       id: "pk-1",
-      subject: "薬物動態学",
+      subject: "薬剤",
       question: "反復投与における定常状態血中濃度（Css）到達に要する時間として正しいものはどれか？",
       choices: [
         "半減期の約1倍",
@@ -119,29 +124,45 @@ export const quizData: Record<string, Question[]> = {
         "投与回数に依存する",
       ],
       answer: 1,
-      explanation: "定常状態血中濃度（Css）には理論上、投与間隔が一定であれば半減期の約4〜5倍の時間で到達する（約97%）。実際の臨床では「3〜5半減期」を目安とする。参照: コンパス薬物速度論演習・個別化医療を目指した臨床薬物動態学1",
+      explanation: "定常状態血中濃度（Css）には理論上、投与間隔が一定であれば半減期の約4〜5倍の時間で到達する（約97%）。実際の臨床では「3〜5半減期」を目安とする。参照: コンパス薬物速度論演習",
       textbook: "コンパス薬物速度論演習",
       year: 2023,
       difficulty: "普",
     },
   ],
-  "biochemistry": [
+  "biology": [
     {
       id: "bc-1",
-      subject: "生化学",
+      subject: "生物",
       question: "解糖系においてATPを消費するステップの数として正しいものはどれか？",
       choices: ["1ステップ", "2ステップ", "3ステップ", "4ステップ"],
       answer: 1,
-      explanation: "解糖系ではグルコース→グルコース-6-リン酸（ヘキソキナーゼ）とフルクトース-6-リン酸→フルクトース-1,6-ビスリン酸（ホスホフルクトキナーゼ-1）の2ステップでATPを消費する。参照: レーニンジャーの新生化学[上]第7版 第14章",
-      textbook: "レーニンジャーの新生化学[上][下]第7版",
+      explanation: "解糖系ではグルコース→グルコース-6-リン酸（ヘキソキナーゼ）とフルクトース-6-リン酸→フルクトース-1,6-ビスリン酸（ホスホフルクトキナーゼ-1）の2ステップでATPを消費する。参照: レーニンジャーの新生化学〔上〕第7版 第14章",
+      textbook: "レーニンジャーの新生化学〔上〕〔下〕第7版",
       year: 2021,
       difficulty: "易",
+    },
+    {
+      id: "cb-1",
+      subject: "生物",
+      question: "細胞周期においてG1チェックポイントを通過するために必要なサイクリン/CDK複合体はどれか？",
+      choices: [
+        "サイクリンB/CDK1",
+        "サイクリンD/CDK4,6",
+        "サイクリンA/CDK2",
+        "サイクリンE/CDK2",
+      ],
+      answer: 1,
+      explanation: "G1チェックポイント（制限点）の通過にはサイクリンD/CDK4,6複合体が重要。これがRbタンパク質をリン酸化してG1→S期移行を促進する。サイクリンB/CDK1はG2/Mチェックポイントに関与。参照: Essential細胞生物学 原書第5版 第17章",
+      textbook: "Essential細胞生物学 原書第5版",
+      year: 2022,
+      difficulty: "難",
     },
   ],
   "pharmacology": [
     {
       id: "pg-1",
-      subject: "薬理学",
+      subject: "薬理",
       question: "β₁受容体を選択的に遮断する薬物として正しいものはどれか？",
       choices: ["プロプラノロール", "メトプロロール", "カルベジロール", "ラベタロール"],
       answer: 1,
@@ -151,10 +172,10 @@ export const quizData: Record<string, Question[]> = {
       difficulty: "普",
     },
   ],
-  "physical-chemistry": [
+  "physics": [
     {
       id: "pc-1",
-      subject: "物理化学",
+      subject: "物理",
       question: "ギブスの自由エネルギー変化（ΔG）が負の値であることは何を意味するか？",
       choices: [
         "反応が吸熱的である",
@@ -168,43 +189,23 @@ export const quizData: Record<string, Question[]> = {
       year: 2020,
       difficulty: "易",
     },
-  ],
-  "analytical-chemistry": [
     {
       id: "ac-1",
-      subject: "分析化学",
+      subject: "物理",
       question: "HPLC（高速液体クロマトグラフィー）の逆相系において、溶出順序に影響する因子として最も重要なものはどれか？",
       choices: ["分子量", "疎水性（logP）", "酸解離定数（pKa）", "旋光度"],
       answer: 1,
-      explanation: "逆相HPLCでは固定相に非極性（C18など）を使用し、疎水性の低い（極性の高い）化合物が先に溶出する。logPが低い化合物ほど早く、高い化合物ほど遅く溶出される。参照: パートナー分析化学Ⅱ 第4章",
-      textbook: "パートナー分析化学Ⅰ・Ⅱ",
+      explanation: "逆相HPLCでは固定相に非極性（C18など）を使用し、疎水性の低い（極性の高い）化合物が先に溶出する。logPが低い化合物ほど早く、高い化合物ほど遅く溶出される。参照: パートナー分析化学Ⅱ 改訂第4版増補 第4章",
+      textbook: "パートナー分析化学Ⅰ・Ⅱ 改訂第4版増補",
       year: 2021,
       difficulty: "普",
-    },
-  ],
-  "cell-biology": [
-    {
-      id: "cb-1",
-      subject: "細胞生物学",
-      question: "細胞周期においてG1チェックポイントを通過するために必要なサイクリン/CDK複合体はどれか？",
-      choices: [
-        "サイクリンB/CDK1",
-        "サイクリンD/CDK4,6",
-        "サイクリンA/CDK2",
-        "サイクリンE/CDK2",
-      ],
-      answer: 1,
-      explanation: "G1チェックポイント（制限点）の通過にはサイクリンD/CDK4,6複合体が重要。これがRbタンパク質をリン酸化してG1→S期移行を促進する。サイクリンB/CDK1はG2/Mチェックポイントに関与。参照: Essential細胞生物学 第17章",
-      textbook: "Essential細胞生物学",
-      year: 2022,
-      difficulty: "難",
     },
   ],
 };
 
 export const wikiData: Record<string, { title: string; sections: { heading: string; content: string; textbook?: string }[] }> = {
-  "organic-chemistry": {
-    title: "有機化学 知識まとめ",
+  "chemistry": {
+    title: "化学 知識まとめ",
     sections: [
       {
         heading: "反応機構の分類",
@@ -221,7 +222,7 @@ export const wikiData: Record<string, { title: string; sections: { heading: stri
 **脱離反応 (E)**
 - E1: 一次速度論、カルボカチオン中間体
 - E2: 二次速度論、anti-脱離（ザイツェフ則優先）`,
-        textbook: "ボルハルト・ショアー現代有機化学(上)(下)",
+        textbook: "ボルハルト・ショアー現代有機化学（上）（下）",
       },
       {
         heading: "立体化学",
@@ -236,7 +237,7 @@ export const wikiData: Record<string, { title: string; sections: { heading: stri
 
 **メソ化合物**
 - 不斉炭素を持つが全体として光学不活性`,
-        textbook: "ボルハルト・ショアー現代有機化学(上)(下)",
+        textbook: "ボルハルト・ショアー現代有機化学（上）（下）",
       },
       {
         heading: "重要な反応",
@@ -250,12 +251,12 @@ export const wikiData: Record<string, { title: string; sections: { heading: stri
 
 **アルドール反応**
 - エノラートイオン + アルデヒド/ケトン → β-ヒドロキシカルボニル化合物`,
-        textbook: "ボルハルト・ショアー現代有機化学(上)(下)",
+        textbook: "ボルハルト・ショアー現代有機化学（上）（下）",
       },
     ],
   },
   "pharmaceutics": {
-    title: "薬剤学 知識まとめ",
+    title: "薬剤 知識まとめ",
     sections: [
       {
         heading: "バイオアベイラビリティ",
@@ -274,7 +275,7 @@ export const wikiData: Record<string, { title: string; sections: { heading: stri
 | II | 低 | 高 | 溶解 |
 | III | 高 | 低 | 透過 |
 | IV | 低 | 低 | 両方 |`,
-        textbook: "薬剤学第5版",
+        textbook: "薬剤学（第5版）",
       },
       {
         heading: "製剤設計",
@@ -292,15 +293,10 @@ export const wikiData: Record<string, { title: string; sections: { heading: stri
 - リポソーム：細網内皮系取り込み
 - ナノ粒子：EPR効果（腫瘍への受動的集積）
 - PLGA製剤：生分解性ポリマーによる徐放`,
-        textbook: "薬剤学第5版",
+        textbook: "薬剤学（第5版）",
       },
-    ],
-  },
-  "pharmacokinetics": {
-    title: "薬物動態学 知識まとめ",
-    sections: [
       {
-        heading: "基本パラメータ",
+        heading: "薬物動態の基本パラメータ",
         content: `**クリアランス (CL)**
 - 単位時間あたりに薬物を完全に除去できる血漿量
 - CL = Vd × ke = Dose / AUC
@@ -336,12 +332,12 @@ export const wikiData: Record<string, { title: string; sections: { heading: stri
 - バンコマイシン（腎排泄）
 - フェニトイン（非線形動態）
 - テオフィリン（低治療域）`,
-        textbook: "個別化医療を目指した臨床薬物動態学1",
+        textbook: "コンパス生物薬剤学",
       },
     ],
   },
-  "biochemistry": {
-    title: "生化学 知識まとめ",
+  "biology": {
+    title: "生物 知識まとめ",
     sections: [
       {
         heading: "解糖系",
@@ -359,7 +355,7 @@ export const wikiData: Record<string, { title: string; sections: { heading: stri
 **調節**
 - PFK-1の活性化：AMP、ADP、フルクトース-2,6-ビスリン酸
 - PFK-1の抑制：ATP、クエン酸`,
-        textbook: "レーニンジャーの新生化学[上][下]第7版",
+        textbook: "レーニンジャーの新生化学〔上〕〔下〕第7版",
       },
       {
         heading: "TCAサイクル",
@@ -376,12 +372,32 @@ export const wikiData: Record<string, { title: string; sections: { heading: stri
 
 **アナプレロティック反応**
 - ピルビン酸 + CO₂ → オキサロ酢酸（ピルビン酸カルボキシラーゼ）`,
-        textbook: "レーニンジャーの新生化学[上][下]第7版",
+        textbook: "レーニンジャーの新生化学〔上〕〔下〕第7版",
+      },
+      {
+        heading: "細胞周期と制御",
+        content: `**細胞周期の段階**
+- G1期：細胞増大、DNA合成準備
+- S期：DNA複製
+- G2期：分裂準備
+- M期：有糸分裂（前・中・後・終期）
+
+**チェックポイントとサイクリン/CDK**
+| チェックポイント | サイクリン/CDK | 主な機能 |
+|---|---|---|
+| G1/S | サイクリンD/CDK4,6 | Rb リン酸化 |
+| S期 | サイクリンE/CDK2 | S期開始 |
+| G2/M | サイクリンB/CDK1 | M期開始 |
+
+**がん抑制遺伝子**
+- Rb：E2F転写因子を隔離 → 細胞増殖抑制
+- p53：DNA損傷センサー → G1停止またはアポトーシス`,
+        textbook: "Essential細胞生物学 原書第5版",
       },
     ],
   },
   "pharmacology": {
-    title: "薬理学 知識まとめ",
+    title: "薬理 知識まとめ",
     sections: [
       {
         heading: "自律神経薬",
@@ -414,8 +430,8 @@ export const wikiData: Record<string, { title: string; sections: { heading: stri
       },
     ],
   },
-  "physical-chemistry": {
-    title: "物理化学 知識まとめ",
+  "physics": {
+    title: "物理 知識まとめ",
     sections: [
       {
         heading: "熱力学の基礎",
@@ -445,11 +461,6 @@ export const wikiData: Record<string, { title: string; sections: { heading: stri
 - 酸化還元電位が高い：酸化剤として働く`,
         textbook: "アトキンス物理化学要論第7版",
       },
-    ],
-  },
-  "analytical-chemistry": {
-    title: "分析化学 知識まとめ",
-    sections: [
       {
         heading: "クロマトグラフィー",
         content: `**HPLCの分類**
@@ -466,34 +477,8 @@ export const wikiData: Record<string, { title: string; sections: { heading: stri
 - ESI（エレクトロスプレーイオン化）
 - MRM（多重反応モニタリング）→高選択性・高感度
 - 薬物代謝物分析に汎用`,
-        textbook: "パートナー分析化学Ⅰ・Ⅱ",
-      },
-    ],
-  },
-  "cell-biology": {
-    title: "細胞生物学 知識まとめ",
-    sections: [
-      {
-        heading: "細胞周期と制御",
-        content: `**細胞周期の段階**
-- G1期：細胞増大、DNA合成準備
-- S期：DNA複製
-- G2期：分裂準備
-- M期：有糸分裂（前・中・後・終期）
-
-**チェックポイントとサイクリン/CDK**
-| チェックポイント | サイクリン/CDK | 主な機能 |
-|---|---|---|
-| G1/S | サイクリンD/CDK4,6 | Rb リン酸化 |
-| S期 | サイクリンE/CDK2 | S期開始 |
-| G2/M | サイクリンB/CDK1 | M期開始 |
-
-**がん抑制遺伝子**
-- Rb：E2F転写因子を隔離 → 細胞増殖抑制
-- p53：DNA損傷センサー → G1停止またはアポトーシス`,
-        textbook: "Essential細胞生物学",
+        textbook: "パートナー分析化学Ⅰ・Ⅱ 改訂第4版増補",
       },
     ],
   },
 };
-

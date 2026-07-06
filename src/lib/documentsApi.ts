@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { subjects } from "./mockData";
 
 export type DocType = "past_exam" | "resume" | "textbook";
 
@@ -85,10 +86,48 @@ export async function uploadDocument(params: {
   return mapRow(data as DocumentRow);
 }
 
+export async function uploadPastExamForAllSubjects(params: {
+  file: File;
+  year?: number;
+}): Promise<DocumentRecord[]> {
+  const ext = params.file.name.split(".").pop();
+  const path = `all-subjects/past_exam/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, params.file);
+  if (uploadError) throw uploadError;
+
+  const rows = subjects.map((s) => ({
+    subject_id: s.id,
+    doc_type: "past_exam" as const,
+    title: params.file.name,
+    textbook_name: null,
+    year: params.year ?? null,
+    file_path: path,
+    file_size: params.file.size,
+  }));
+
+  const { data, error } = await supabase.from("documents").insert(rows).select();
+
+  if (error || !data) {
+    await supabase.storage.from(BUCKET).remove([path]);
+    throw error ?? new Error("Failed to save document metadata");
+  }
+  return (data as DocumentRow[]).map(mapRow);
+}
+
 export async function deleteDocument(doc: DocumentRecord): Promise<void> {
-  await supabase.storage.from(BUCKET).remove([doc.filePath]);
   const { error } = await supabase.from("documents").delete().eq("id", doc.id);
   if (error) throw error;
+
+  // Only remove the underlying file once no other subject's row still references it
+  // (a past exam shared across all subjects has one storage object but many rows).
+  const { count } = await supabase
+    .from("documents")
+    .select("id", { count: "exact", head: true })
+    .eq("file_path", doc.filePath);
+  if (!count) {
+    await supabase.storage.from(BUCKET).remove([doc.filePath]);
+  }
 }
 
 export async function updateDocument(

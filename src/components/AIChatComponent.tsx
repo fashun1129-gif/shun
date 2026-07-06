@@ -55,7 +55,7 @@ function getMockResponse(question: string, subjectId?: string): { content: strin
   }
 
   return {
-    content: `ご質問「**${question}**」について回答します。\n\n現在はモックデータで動作していますが、Claude API連携後は：\n\n1. **アップロードされた過去問**を最優先で参照\n2. **アップロードされたレジュメ**の内容を反映\n3. **指定教科書**（${textbooks.slice(0, 3).join("、")} 等）を出典として明示\n\nして回答します。\n\n具体的な薬学トピック（SN2反応、バイオアベイラビリティ、解糖系、薬物動態パラメータ、β遮断薬など）をお試しください。`,
+    content: `ご質問「**${question}**」について回答します。\n\n現在はモックデータで動作していますが、Claude API連携後は：\n\n1. **アップロードされた過去問**を最優先で参照\n2. **アップロードされたレジュメ**の内容を反映\n3. **指定教科書**（${textbooks.slice(0, 3).map((tb) => tb.title).join("、")} 等）を出典として明示\n\nして回答します。\n\n具体的な薬学トピック（SN2反応、バイオアベイラビリティ、解糖系、薬物動態パラメータ、β遮断薬など）をお試しください。`,
     sources: ["スタンダード薬学シリーズII"],
   };
 }
@@ -149,10 +149,10 @@ export default function AIChatComponent({ subjectId, subjectName }: Props) {
       {/* Quick prompts */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-thin">
         {[
-          subjectId === "organic-chemistry" ? "SN2反応を説明して" : null,
+          subjectId === "chemistry" ? "SN2反応を説明して" : null,
           subjectId === "pharmaceutics" ? "BCS分類を教えて" : null,
-          subjectId === "pharmacokinetics" ? "定常状態について" : null,
-          subjectId === "biochemistry" ? "解糖系のATP収支" : null,
+          subjectId === "pharmaceutics" ? "定常状態について" : null,
+          subjectId === "biology" ? "解糖系のATP収支" : null,
           "過去問頻出トピックは？",
           "この科目の弱点を分析して",
         ].filter(Boolean).map((prompt, i) => (

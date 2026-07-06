@@ -62,9 +62,6 @@ export default function QuizComponent({ questions, subjectName, onResult }: Prop
           <button onClick={handleRestart} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-indigo-700 transition-colors">
             もう一度挑戦
           </button>
-          <button onClick={() => onResult(results)} className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors">
-            結果を保存
-          </button>
         </div>
       </div>
     );

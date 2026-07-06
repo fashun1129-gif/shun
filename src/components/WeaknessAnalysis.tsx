@@ -1,6 +1,6 @@
 "use client";
 
-import { subjects, quizData } from "@/lib/mockData";
+import { subjects } from "@/lib/mockData";
 
 type QuizResult = {
   questionId: string;
@@ -34,7 +34,7 @@ export default function WeaknessAnalysis({ results }: Props) {
   }
 
   const subjectStats = subjects.map((sub) => {
-    const subResults = results.filter((r) => r.questionId.startsWith(sub.id.split("-").map(w => w[0]).join("")));
+    const subResults = results.filter((r) => r.subject === sub.id);
     const total = subResults.length;
     const correct = subResults.filter((r) => r.correct).length;
     return {

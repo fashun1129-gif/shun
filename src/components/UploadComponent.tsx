@@ -9,7 +9,10 @@ import {
   listDocuments,
   updateDocument,
   uploadDocument,
+  uploadPastExamForAllSubjects,
 } from "@/lib/documentsApi";
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 const DOC_TYPE_LABEL: Record<DocType, string> = {
   past_exam: "過去問",
@@ -39,6 +42,7 @@ export default function UploadComponent() {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState(subjects[0].id);
   const [selectedType, setSelectedType] = useState<DocType>("past_exam");
+  const [allSubjects, setAllSubjects] = useState(false);
   const [textbookName, setTextbookName] = useState("");
   const [year, setYear] = useState("");
   const [uploadingCount, setUploadingCount] = useState(0);
@@ -63,20 +67,34 @@ export default function UploadComponent() {
       setFormError("教科書名を入力してください");
       return;
     }
+    const tooLarge = files.find((f) => f.size > MAX_FILE_SIZE);
+    if (tooLarge) {
+      setFormError(`「${tooLarge.name}」は50MBを超えているためアップロードできません`);
+      return;
+    }
     setFormError("");
     setUploadingCount((c) => c + files.length);
 
     for (const file of files) {
       try {
-        await uploadDocument({
-          file,
-          subjectId: selectedSubject,
-          docType: selectedType,
-          textbookName: selectedType === "textbook" ? textbookName.trim() : undefined,
-          year: selectedType === "past_exam" && year ? Number(year) : undefined,
-        });
-      } catch {
-        setFormError(`「${file.name}」のアップロードに失敗しました`);
+        if (selectedType === "past_exam" && allSubjects) {
+          await uploadPastExamForAllSubjects({
+            file,
+            year: year ? Number(year) : undefined,
+          });
+        } else {
+          await uploadDocument({
+            file,
+            subjectId: selectedSubject,
+            docType: selectedType,
+            textbookName: selectedType === "textbook" ? textbookName.trim() : undefined,
+            year: selectedType === "past_exam" && year ? Number(year) : undefined,
+          });
+        }
+      } catch (err) {
+        console.error("Document upload failed", err);
+        const reason = err instanceof Error ? err.message : "不明なエラー";
+        setFormError(`「${file.name}」のアップロードに失敗しました（${reason}）`);
       } finally {
         setUploadingCount((c) => c - 1);
       }
@@ -136,18 +154,20 @@ export default function UploadComponent() {
           </select>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">科目</label>
-          <select
-            value={selectedSubject}
-            onChange={(e) => setSelectedSubject(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
-          >
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>{s.icon} {s.name}</option>
-            ))}
-          </select>
-        </div>
+        {!(selectedType === "past_exam" && allSubjects) && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">科目</label>
+            <select
+              value={selectedSubject}
+              onChange={(e) => setSelectedSubject(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
+            >
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>{s.icon} {s.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {selectedType === "textbook" && (
           <div>
@@ -161,7 +181,7 @@ export default function UploadComponent() {
             />
             <datalist id="textbook-options">
               {textbooks.map((tb) => (
-                <option key={tb} value={tb} />
+                <option key={tb.title} value={tb.title} />
               ))}
             </datalist>
           </div>
@@ -180,6 +200,18 @@ export default function UploadComponent() {
           </div>
         )}
       </div>
+
+      {selectedType === "past_exam" && (
+        <label className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={allSubjects}
+            onChange={(e) => setAllSubjects(e.target.checked)}
+            className="w-4 h-4 accent-indigo-600"
+          />
+          全科目共通の過去問として登録する（毎年発行される全科目まとめのPDFなど。1回のアップロードで全科目に登録されます）
+        </label>
+      )}
 
       {formError && (
         <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl p-3">
@@ -295,13 +327,24 @@ export default function UploadComponent() {
         <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
           <span>📚</span> 参照教科書一覧
         </h3>
-        <div className="bg-gray-50 rounded-xl p-4 grid grid-cols-1 gap-1.5">
-          {textbooks.map((tb, i) => (
-            <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
-              <span className="text-indigo-400 text-xs font-mono w-5 text-right">{i + 1}.</span>
-              {tb}
-            </div>
-          ))}
+        <div className="space-y-3">
+          {subjects.map((s) => {
+            const subjectTextbooks = textbooks.filter((tb) => tb.subjectId === s.id);
+            if (subjectTextbooks.length === 0) return null;
+            return (
+              <div key={s.id}>
+                <p className="text-xs font-semibold text-gray-500 mb-1.5">{s.icon} {s.name}</p>
+                <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
+                  {subjectTextbooks.map((tb) => (
+                    <div key={tb.title} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm text-gray-600">
+                      <span>{tb.title}</span>
+                      <span className="text-xs text-gray-400 font-mono">ISBN: {tb.isbn}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

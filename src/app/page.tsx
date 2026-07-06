@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { isAllowedEmail, DOMAIN_RESTRICTION_MESSAGE } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,8 +11,18 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) router.replace("/dashboard");
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") === "domain") {
+      setError(DOMAIN_RESTRICTION_MESSAGE);
+    }
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) return;
+      if (!isAllowedEmail(session.user.email)) {
+        await supabase.auth.signOut();
+        return;
+      }
+      router.replace("/dashboard");
     });
   }, [router]);
 
