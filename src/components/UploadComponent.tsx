@@ -205,10 +205,10 @@ export default function UploadComponent() {
         </p>
         <p className="text-xs text-gray-400">PDF・PNG・JPEG に対応 | 最大50MB</p>
         {uploadingCount > 0 && (
-          <p className="text-xs text-indigo-500 mt-2 flex items-center justify-center gap-1.5">
+          <div className="text-xs text-indigo-500 mt-2 flex items-center justify-center gap-1.5">
             <div className="w-3 h-3 border border-indigo-400 border-t-transparent rounded-full animate-spin" />
             {uploadingCount}件アップロード中...
-          </p>
+          </div>
         )}
         <input
           ref={fileInputRef}
