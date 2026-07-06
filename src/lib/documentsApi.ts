@@ -13,6 +13,7 @@ export type DocumentRecord = {
   filePath: string;
   fileSize: number;
   uploadedAt: string;
+  extractedContent: string | null;
 };
 
 const BUCKET = "documents";
@@ -27,6 +28,7 @@ type DocumentRow = {
   file_path: string;
   file_size: number;
   uploaded_at: string;
+  extracted_content: string | null;
 };
 
 function mapRow(row: DocumentRow): DocumentRecord {
@@ -40,7 +42,20 @@ function mapRow(row: DocumentRow): DocumentRecord {
     filePath: row.file_path,
     fileSize: row.file_size,
     uploadedAt: row.uploaded_at,
+    extractedContent: row.extracted_content ?? null,
   };
+}
+
+export async function triggerAnalysis(documentId: string): Promise<void> {
+  const res = await fetch("/api/analyze-document", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ documentId }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error ?? `analysis request failed (${res.status})`);
+  }
 }
 
 export async function listDocuments(): Promise<DocumentRecord[]> {

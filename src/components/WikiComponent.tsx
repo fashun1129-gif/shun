@@ -1,17 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { wikiData } from "@/lib/mockData";
+import { listWikiSections, WikiSection } from "@/lib/wikiApi";
 
 type Props = {
   subjectId: string;
 };
 
 export default function WikiComponent({ subjectId }: Props) {
-  const data = wikiData[subjectId];
+  const [aiSections, setAiSections] = useState<WikiSection[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeSection, setActiveSection] = useState(0);
 
-  if (!data) {
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    listWikiSections(subjectId).then((sections) => {
+      if (!cancelled) {
+        setAiSections(sections);
+        setIsLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [subjectId]);
+
+  const staticData = wikiData[subjectId];
+  const sections: WikiSection[] = [...(staticData?.sections ?? []), ...aiSections];
+
+  if (isLoading) {
+    return <div className="text-center py-16 text-sm text-gray-400">読み込み中...</div>;
+  }
+
+  if (sections.length === 0) {
     return (
       <div className="text-center py-16 text-gray-400">
         <div className="text-5xl mb-4">📝</div>
@@ -28,7 +51,7 @@ export default function WikiComponent({ subjectId }: Props) {
         <div className="bg-gray-50 rounded-xl p-3 sticky top-0">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-2">目次</p>
           <nav className="space-y-1">
-            {data.sections.map((s, i) => (
+            {sections.map((s, i) => (
               <button
                 key={i}
                 onClick={() => setActiveSection(i)}
@@ -48,7 +71,7 @@ export default function WikiComponent({ subjectId }: Props) {
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="animate-fade-in">
-          {data.sections.map((section, i) => (
+          {sections.map((section, i) => (
             <div
               key={i}
               className={`mb-6 ${i !== activeSection ? "hidden" : ""}`}
@@ -79,8 +102,8 @@ export default function WikiComponent({ subjectId }: Props) {
             ← 前のセクション
           </button>
           <button
-            onClick={() => setActiveSection((s) => Math.min(data.sections.length - 1, s + 1))}
-            disabled={activeSection === data.sections.length - 1}
+            onClick={() => setActiveSection((s) => Math.min(sections.length - 1, s + 1))}
+            disabled={activeSection === sections.length - 1}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors ml-auto"
           >
             次のセクション →

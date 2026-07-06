@@ -7,6 +7,7 @@ import {
   DocumentRecord,
   deleteDocument,
   listDocuments,
+  triggerAnalysis,
   updateDocument,
   uploadDocument,
   uploadPastExamForAllSubjects,
@@ -63,6 +64,7 @@ export default function UploadComponent() {
   const [year, setYear] = useState("");
   const [uploadingCount, setUploadingCount] = useState(0);
   const [formError, setFormError] = useState("");
+  const [analyzingCount, setAnalyzingCount] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -92,20 +94,22 @@ export default function UploadComponent() {
     setUploadingCount((c) => c + files.length);
 
     for (const file of files) {
+      let uploaded: DocumentRecord[] = [];
       try {
         if (selectedType === "past_exam" && allSubjects) {
-          await uploadPastExamForAllSubjects({
+          uploaded = await uploadPastExamForAllSubjects({
             file,
             year: year ? Number(year) : undefined,
           });
         } else {
-          await uploadDocument({
+          const doc = await uploadDocument({
             file,
             subjectId: selectedSubject,
             docType: selectedType,
             textbookName: selectedType === "textbook" ? textbookName.trim() : undefined,
             year: selectedType === "past_exam" && year ? Number(year) : undefined,
           });
+          uploaded = [doc];
         }
       } catch (err) {
         console.error("Document upload failed", err);
@@ -113,6 +117,23 @@ export default function UploadComponent() {
         setFormError(`「${file.name}」のアップロードに失敗しました（${reason}）`);
       } finally {
         setUploadingCount((c) => c - 1);
+      }
+
+      // An all-subjects past exam creates one row per subject sharing the same
+      // file, so each row is analyzed separately (the prompt scopes extraction
+      // to that row's subject) even though the underlying PDF is identical.
+      for (const doc of uploaded) {
+        setAnalyzingCount((c) => c + 1);
+        try {
+          await triggerAnalysis(doc.id);
+        } catch (err) {
+          console.error("Document analysis failed", err);
+          const reason = extractErrorMessage(err);
+          setFormError(`「${file.name}」のAI解析に失敗しました（${reason}）。ファイル自体は保存されています。`);
+        } finally {
+          setAnalyzingCount((c) => c - 1);
+          await refreshDocuments();
+        }
       }
     }
     await refreshDocuments();
@@ -258,6 +279,12 @@ export default function UploadComponent() {
             {uploadingCount}件アップロード中...
           </div>
         )}
+        {analyzingCount > 0 && (
+          <div className="text-xs text-purple-500 mt-2 flex items-center justify-center gap-1.5">
+            <div className="w-3 h-3 border border-purple-400 border-t-transparent rounded-full animate-spin" />
+            🤖 AIが{analyzingCount}件解析中...（クイズ生成・Wiki反映まで少し時間がかかります）
+          </div>
+        )}
         <input
           ref={fileInputRef}
           type="file"
@@ -304,6 +331,15 @@ export default function UploadComponent() {
                       <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                         {subjectName(doc.subjectId)}
                       </span>
+                      {doc.extractedContent ? (
+                        <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">
+                          🤖 AI解析済み
+                        </span>
+                      ) : (
+                        <span className="text-xs bg-gray-50 text-gray-400 border border-gray-200 px-2 py-0.5 rounded-full">
+                          未解析
+                        </span>
+                      )}
                       {doc.textbookName && (
                         <span className="text-xs text-gray-400">{doc.textbookName}</span>
                       )}

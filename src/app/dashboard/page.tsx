@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { subjects, quizData } from "@/lib/mockData";
+import { subjects, Question } from "@/lib/mockData";
+import { listQuestionsBySubject } from "@/lib/questionsApi";
 import QuizComponent from "@/components/QuizComponent";
 import WikiComponent from "@/components/WikiComponent";
 import AIChatComponent from "@/components/AIChatComponent";
@@ -36,6 +37,20 @@ export default function DashboardPage() {
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [showShare, setShowShare] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [questionsBySubject, setQuestionsBySubject] = useState<Record<string, Question[]>>({});
+  const [questionsLoading, setQuestionsLoading] = useState(true);
+
+  const refreshQuestions = useCallback(async () => {
+    setQuestionsLoading(true);
+    const grouped = await listQuestionsBySubject();
+    setQuestionsBySubject(grouped);
+    setQuestionsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (!authChecked) return;
+    refreshQuestions();
+  }, [authChecked, activeTab, refreshQuestions]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -75,7 +90,7 @@ export default function DashboardPage() {
   };
 
   const currentSubject = subjects.find((s) => s.id === selectedSubject)!;
-  const currentQuestions = quizData[selectedSubject] ?? [];
+  const currentQuestions = questionsBySubject[selectedSubject] ?? [];
 
   const handleQuizResult = useCallback((results: { questionId: string; correct: boolean }[]) => {
     const newResults = results.map((r) => ({
@@ -155,11 +170,11 @@ export default function DashboardPage() {
                 >
                   <span className="text-base">{sub.icon}</span>
                   <span className="truncate">{sub.name}</span>
-                  {quizData[sub.id]?.length > 0 && (
+                  {questionsBySubject[sub.id]?.length > 0 && (
                     <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 ${
                       selectedSubject === sub.id ? "bg-indigo-500 text-white" : "bg-indigo-900 text-indigo-300"
                     }`}>
-                      {quizData[sub.id].length}
+                      {questionsBySubject[sub.id].length}
                     </span>
                   )}
                 </button>
@@ -225,7 +240,9 @@ export default function DashboardPage() {
           <div className="flex-1 overflow-y-auto p-6">
             {activeTab === "quiz" && (
               <div className="max-w-2xl mx-auto">
-                {currentQuestions.length === 0 ? (
+                {questionsLoading ? (
+                  <div className="text-center py-16 text-sm text-gray-400">読み込み中...</div>
+                ) : currentQuestions.length === 0 ? (
                   <div className="text-center py-16">
                     <div className="text-5xl mb-4">📝</div>
                     <p className="text-lg font-medium text-gray-600">この科目の問題は準備中です</p>
