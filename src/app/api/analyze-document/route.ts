@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
+import { subjects } from "@/lib/mockData";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -86,12 +87,15 @@ export async function POST(req: NextRequest) {
     ? existingSections.map((s) => `### ${s.heading}\n${s.content}`).join("\n\n")
     : "（まだありません）";
 
+  const otherSubjectNames = subjects.filter((s) => s.id !== doc.subject_id).map((s) => s.name);
+
   const instructions = `これは薬学大学院入試対策アプリの教材です。
 科目: ${subjectName}
 書類の種類: ${docTypeLabel}
 ファイル名: ${doc.title}
 
-このPDFを解析してください。全科目共通でまとめられた資料の可能性もあるので、その場合は「${subjectName}」に関係する部分だけを対象にしてください。
+重要: このPDFは複数科目（${otherSubjectNames.join("・")}・${subjectName}）の設問がまとめて1つのファイルに入っている可能性が高いです。
+今回はこの中の「${subjectName}」に該当する設問・内容だけを対象にしてください。${otherSubjectNames.join("・")}に関する設問・内容は、たとえ${subjectName}と関連が深そうに見えても、summary・wiki_sections・questionsのいずれにも絶対に含めないでください。科目の判別に迷う設問があれば、無理に含めず除外してください。
 
 1. summary: この資料の要点を、AIチャットが参照できるよう日本語で数段落にまとめてください。
 
