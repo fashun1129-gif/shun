@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { subjects, quizData } from "@/lib/mockData";
 import QuizComponent from "@/components/QuizComponent";
 import WikiComponent from "@/components/WikiComponent";
@@ -9,6 +9,7 @@ import WeaknessAnalysis from "@/components/WeaknessAnalysis";
 import UploadComponent from "@/components/UploadComponent";
 import ShareModal from "@/components/ShareModal";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
 type Tab = "quiz" | "wiki" | "ai-chat" | "weakness" | "upload";
 
@@ -19,19 +20,47 @@ type QuizResult = {
   timestamp: number;
 };
 
-const mockUser = {
-  name: "山田 太郎",
-  email: "fa.shun.1129@gmail.com",
-  avatar: "山",
+type CurrentUser = {
+  name: string;
+  email: string;
+  avatar: string;
 };
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState(subjects[0].id);
   const [activeTab, setActiveTab] = useState<Tab>("quiz");
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [showShare, setShowShare] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        router.replace("/");
+        return;
+      }
+      const name = session.user.user_metadata?.full_name ?? session.user.email ?? "ユーザー";
+      setUser({
+        name,
+        email: session.user.email ?? "",
+        avatar: name.charAt(0),
+      });
+      setAuthChecked(true);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) router.replace("/");
+    });
+    return () => listener.subscription.unsubscribe();
+  }, [router]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.replace("/");
+  };
 
   const currentSubject = subjects.find((s) => s.id === selectedSubject)!;
   const currentQuestions = quizData[selectedSubject] ?? [];
@@ -52,6 +81,14 @@ export default function DashboardPage() {
     { id: "weakness", label: "弱点分析", icon: "📊" },
     { id: "upload", label: "アップロード", icon: "📤" },
   ];
+
+  if (!authChecked || !user) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-slate-50">
+        <div className="w-8 h-8 border-2 border-gray-300 border-t-indigo-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-slate-50">
@@ -76,13 +113,14 @@ export default function DashboardPage() {
             <span>📋</span> 過去問・レジュメ・教科書をAIが学習
           </div>
           <button
-            onClick={() => router.push("/")}
+            onClick={handleLogout}
+            title="ログアウト"
             className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-xl transition-colors"
           >
             <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">
-              {mockUser.avatar}
+              {user.avatar}
             </div>
-            <span className="text-sm text-gray-700 hidden sm:block">{mockUser.name}</span>
+            <span className="text-sm text-gray-700 hidden sm:block">{user.name}</span>
           </button>
         </div>
       </header>
@@ -239,7 +277,7 @@ export default function DashboardPage() {
           subjectId={selectedSubject}
           subjectName={currentSubject.name}
           questions={currentQuestions}
-          createdBy={mockUser.name}
+          createdBy={user.name}
           onClose={() => setShowShare(false)}
         />
       )}

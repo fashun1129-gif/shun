@@ -1,18 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleGoogleLogin = () => {
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.replace("/dashboard");
+    });
+  }, [router]);
+
+  const handleGoogleLogin = async () => {
     setIsLoading(true);
-    // Mock login - in production this would use Supabase Auth
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 1200);
+    setError("");
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/dashboard` },
+    });
+    if (error) {
+      setIsLoading(false);
+      setError("ログインに失敗しました。時間をおいて再度お試しください。");
+    }
   };
 
   return (
@@ -57,6 +70,12 @@ export default function LoginPage() {
             )}
             {isLoading ? "ログイン中..." : "Googleアカウントでログイン"}
           </button>
+
+          {error && (
+            <p className="text-red-300 text-xs text-center mt-4 bg-red-500/10 border border-red-400/30 rounded-lg py-2 px-3">
+              {error}
+            </p>
+          )}
 
           <p className="text-indigo-300 text-xs text-center mt-6">
             ログインすることで利用規約とプライバシーポリシーに同意したものとみなします
