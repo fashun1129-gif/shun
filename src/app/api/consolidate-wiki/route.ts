@@ -73,7 +73,7 @@ ${materialBlock}`;
   try {
     const message = await anthropic.messages.create({
       model: "claude-sonnet-5",
-      max_tokens: 16000,
+      max_tokens: 32000,
       tools: [
         {
           name: "build_wiki",
@@ -117,17 +117,24 @@ ${materialBlock}`;
     return NextResponse.json({ error: `AI consolidation failed: ${reason}` }, { status: 502 });
   }
 
-  await supabaseAdmin.from("wiki_sections").delete().eq("subject_id", subjectId);
-  if (sections.length) {
-    await supabaseAdmin.from("wiki_sections").insert(
-      sections.map((s) => ({
-        subject_id: subjectId,
-        heading: s.heading,
-        content: s.content,
-        sources: Array.isArray(s.sources) ? s.sources : [],
-      }))
+  if (sections.length === 0) {
+    // Never wipe existing sections based on an empty result — treat it as a
+    // failed attempt so the caller can retry instead of silently losing data.
+    return NextResponse.json(
+      { error: "model returned no sections; existing wiki left untouched" },
+      { status: 502 }
     );
   }
+
+  await supabaseAdmin.from("wiki_sections").delete().eq("subject_id", subjectId);
+  await supabaseAdmin.from("wiki_sections").insert(
+    sections.map((s) => ({
+      subject_id: subjectId,
+      heading: s.heading,
+      content: s.content,
+      sources: Array.isArray(s.sources) ? s.sources : [],
+    }))
+  );
 
   return NextResponse.json({ ok: true, sections: sections.length });
 }
