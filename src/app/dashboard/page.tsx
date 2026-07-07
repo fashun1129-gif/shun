@@ -10,8 +10,7 @@ import WeaknessAnalysis from "@/components/WeaknessAnalysis";
 import UploadComponent from "@/components/UploadComponent";
 import ShareModal from "@/components/ShareModal";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
-import { isAllowedEmail } from "@/lib/auth";
+import { clearSession, getSession } from "@/lib/session";
 
 type Tab = "quiz" | "wiki" | "ai-chat" | "weakness" | "upload";
 
@@ -24,7 +23,6 @@ type QuizResult = {
 
 type CurrentUser = {
   name: string;
-  email: string;
   avatar: string;
 };
 
@@ -53,52 +51,20 @@ export default function DashboardPage() {
   }, [authChecked, activeTab, refreshQuestions]);
 
   useEffect(() => {
-    // Right after the Google OAuth redirect, the URL's #access_token hasn't been
-    // parsed into a session yet when onAuthStateChange first fires (it fires
-    // immediately with whatever is known synchronously, which is null). If we
-    // bounce to "/" on that first null callback, we beat Supabase's own async
-    // parsing of the hash and never see the real SIGNED_IN event. So: if the URL
-    // still carries an auth hash, wait for a real session (with a timeout safety
-    // net) instead of redirecting on the first empty callback.
-    const hasAuthHash = typeof window !== "undefined" && window.location.hash.includes("access_token");
-    let settled = false;
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        settled = true;
-        if (!isAllowedEmail(session.user.email)) {
-          supabase.auth.signOut().then(() => router.replace("/?error=domain"));
-          return;
-        }
-        const name = session.user.user_metadata?.full_name ?? session.user.email ?? "ユーザー";
-        setUser({
-          name,
-          email: session.user.email ?? "",
-          avatar: name.charAt(0),
-        });
-        setAuthChecked(true);
-        return;
-      }
-      if (!hasAuthHash) {
-        settled = true;
-        router.replace("/");
-      }
+    const session = getSession();
+    if (!session) {
+      router.replace("/");
+      return;
+    }
+    setUser({
+      name: session.displayName,
+      avatar: session.displayName.charAt(0),
     });
-
-    const timeout = hasAuthHash
-      ? setTimeout(() => {
-          if (!settled) router.replace("/");
-        }, 5000)
-      : undefined;
-
-    return () => {
-      listener.subscription.unsubscribe();
-      if (timeout) clearTimeout(timeout);
-    };
+    setAuthChecked(true);
   }, [router]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    clearSession();
     router.replace("/");
   };
 
