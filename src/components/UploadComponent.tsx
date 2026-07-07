@@ -67,6 +67,8 @@ export default function UploadComponent() {
   const [formError, setFormError] = useState("");
   const [analyzingCount, setAnalyzingCount] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [bulkStatus, setBulkStatus] = useState("");
+  const [isBulkRunning, setIsBulkRunning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refreshDocuments = async () => {
@@ -151,6 +153,45 @@ export default function UploadComponent() {
     if (!confirm(`「${doc.title}」を削除しますか？この操作は取り消せません。`)) return;
     await deleteDocument(doc);
     await refreshDocuments();
+  };
+
+  const handleBulkReanalyze = async () => {
+    const pending = documents.filter((d) => !d.extractedContent);
+    if (pending.length === 0) {
+      setBulkStatus("未解析のファイルはありません");
+      setTimeout(() => setBulkStatus(""), 3000);
+      return;
+    }
+    if (!confirm(`未解析の${pending.length}件を解析します。AI利用料金が発生し、数分〜数十分かかる場合があります。続けますか？`)) return;
+
+    setIsBulkRunning(true);
+    const touchedSubjects = new Set<string>();
+
+    for (let i = 0; i < pending.length; i++) {
+      const doc = pending[i];
+      setBulkStatus(`解析中... (${i + 1}/${pending.length})`);
+      try {
+        await triggerAnalysis(doc.id);
+        touchedSubjects.add(doc.subjectId);
+      } catch (err) {
+        console.error("Bulk analysis failed for", doc.id, err);
+      }
+    }
+
+    const subjectList = Array.from(touchedSubjects);
+    for (let i = 0; i < subjectList.length; i++) {
+      setBulkStatus(`Wikiを整理中... (${i + 1}/${subjectList.length}科目)`);
+      try {
+        await triggerWikiConsolidation(subjectList[i]);
+      } catch (err) {
+        console.error("Bulk wiki consolidation failed for", subjectList[i], err);
+      }
+    }
+
+    setBulkStatus("完了しました");
+    setIsBulkRunning(false);
+    await refreshDocuments();
+    setTimeout(() => setBulkStatus(""), 4000);
   };
 
   const countByType = (type: DocType) => documents.filter((d) => d.docType === type).length;
@@ -302,7 +343,24 @@ export default function UploadComponent() {
 
       {/* Uploaded files list */}
       <div>
-        <h3 className="font-semibold text-gray-700 mb-3">登録済みファイル（{documents.length}件）</h3>
+        <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+          <h3 className="font-semibold text-gray-700">登録済みファイル（{documents.length}件）</h3>
+          <div className="flex items-center gap-2">
+            {bulkStatus && <span className="text-xs text-indigo-600">{bulkStatus}</span>}
+            <button
+              onClick={handleBulkReanalyze}
+              disabled={isBulkRunning || isLoadingList}
+              className="flex items-center gap-1.5 text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isBulkRunning ? (
+                <div className="w-3 h-3 border border-indigo-400 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                "🤖"
+              )}
+              未解析分を一括解析
+            </button>
+          </div>
+        </div>
         {isLoadingList ? (
           <div className="text-center py-8 text-sm text-gray-400">読み込み中...</div>
         ) : documents.length === 0 ? (
