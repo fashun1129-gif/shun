@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
 
   let result: ExtractResult;
   try {
-    const message = await anthropic.messages.create({
+    const stream = anthropic.messages.stream({
       model: "claude-sonnet-5",
       max_tokens: 12000,
       tools: [
@@ -130,6 +130,8 @@ export async function POST(req: NextRequest) {
         },
       ],
     });
+
+    const message = await stream.finalMessage();
 
     if (message.stop_reason === "max_tokens") {
       throw new Error("response was truncated (max_tokens reached)");

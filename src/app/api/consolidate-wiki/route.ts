@@ -71,7 +71,7 @@ ${materialBlock}`;
 
   let sections: WikiSectionOut[] = [];
   try {
-    const message = await anthropic.messages.create({
+    const stream = anthropic.messages.stream({
       model: "claude-sonnet-5",
       max_tokens: 32000,
       tools: [
@@ -101,6 +101,8 @@ ${materialBlock}`;
       tool_choice: { type: "tool", name: "build_wiki" },
       messages: [{ role: "user", content: instructions }],
     });
+
+    const message = await stream.finalMessage();
 
     if (message.stop_reason === "max_tokens") {
       throw new Error("response was truncated (max_tokens reached) — too much material to consolidate in one pass");
