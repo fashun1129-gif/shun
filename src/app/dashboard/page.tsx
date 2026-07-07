@@ -53,29 +53,48 @@ export default function DashboardPage() {
   }, [authChecked, activeTab, refreshQuestions]);
 
   useEffect(() => {
-    // Rely solely on onAuthStateChange (fires once immediately with the current
-    // session, then again on future changes) instead of a separate getSession()
-    // call — running both raced on production when landing here right after the
-    // OAuth redirect, since the URL's #access_token hadn't been parsed into a
-    // session yet when getSession() ran, incorrectly bouncing the user back out.
+    // Right after the Google OAuth redirect, the URL's #access_token hasn't been
+    // parsed into a session yet when onAuthStateChange first fires (it fires
+    // immediately with whatever is known synchronously, which is null). If we
+    // bounce to "/" on that first null callback, we beat Supabase's own async
+    // parsing of the hash and never see the real SIGNED_IN event. So: if the URL
+    // still carries an auth hash, wait for a real session (with a timeout safety
+    // net) instead of redirecting on the first empty callback.
+    const hasAuthHash = typeof window !== "undefined" && window.location.hash.includes("access_token");
+    let settled = false;
+
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
+      if (session) {
+        settled = true;
+        if (!isAllowedEmail(session.user.email)) {
+          supabase.auth.signOut().then(() => router.replace("/?error=domain"));
+          return;
+        }
+        const name = session.user.user_metadata?.full_name ?? session.user.email ?? "ユーザー";
+        setUser({
+          name,
+          email: session.user.email ?? "",
+          avatar: name.charAt(0),
+        });
+        setAuthChecked(true);
+        return;
+      }
+      if (!hasAuthHash) {
+        settled = true;
         router.replace("/");
-        return;
       }
-      if (!isAllowedEmail(session.user.email)) {
-        supabase.auth.signOut().then(() => router.replace("/?error=domain"));
-        return;
-      }
-      const name = session.user.user_metadata?.full_name ?? session.user.email ?? "ユーザー";
-      setUser({
-        name,
-        email: session.user.email ?? "",
-        avatar: name.charAt(0),
-      });
-      setAuthChecked(true);
     });
-    return () => listener.subscription.unsubscribe();
+
+    const timeout = hasAuthHash
+      ? setTimeout(() => {
+          if (!settled) router.replace("/");
+        }, 5000)
+      : undefined;
+
+    return () => {
+      listener.subscription.unsubscribe();
+      if (timeout) clearTimeout(timeout);
+    };
   }, [router]);
 
   const handleLogout = async () => {

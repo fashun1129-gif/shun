@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 - headingには「第◯問」「◯年度」「問1〜4」などの年度・問題番号・大問番号を一切含めないでください。純粋な分野・テーマ名だけにしてください（悪い例:「第3問：天然物合成」「1. 酸・塩基の基礎」／良い例:「天然物合成」「酸・塩基の基礎」）。出典（年度・問題番号）はsourcesにのみ記載してください。
 - 各セクションのcontentは **太字**, "- " の箇条書き, "| a | b |" 形式のテーブルを使った日本語のMarkdown風テキストにしてください。content内にも「第◯問」等の記述は含めないでください。
 - 各セクションのsourcesには、そのテーマの根拠になった資料のラベル（例:"2018年度 過去問"、"薬剤学第5版（教科書）"）をすべて列挙してください（重複除去、資料一覧に実際にあるラベルのみ使用）。
-- 重要: 資料一覧には実際に「${subjectName}」の設問内容が書かれています。sectionsを空にせず、必ず1つ以上のセクションを作成してください。一部の資料が「該当する科目名が見当たらない」等の記述をしていても、他の資料に実際の内容が含まれていれば、それらを使ってセクションを作成してください。
+- 重要: 資料一覧には${docs.length}件の資料があり、実際に「${subjectName}」の設問内容が書かれています。sectionsを空にすることは許されません。目安として最低${Math.min(6, Math.max(3, Math.floor(docs.length / 2)))}個以上のセクションを作成してください。一部の資料が「該当する科目名が見当たらない」等の記述をしていても、他の資料に実際の内容が含まれていれば、それらを使ってセクションを作成してください。資料が多く複雑に感じても、必ず分野ごとに分類してsectionsを出力してください。空配列を返すことは失敗と見なされます。
 
 資料一覧:
 ${materialBlock}`;
@@ -113,6 +113,7 @@ ${materialBlock}`;
     }
     const result = toolUse.input as { sections: WikiSectionOut[] };
     sections = Array.isArray(result.sections) ? result.sections : [];
+    console.error("DEBUG consolidate", subjectId, "stop_reason", message.stop_reason, "sections_len", sections.length, "content_blocks", message.content.length);
   } catch (err) {
     console.error("Wiki consolidation failed", err);
     const reason = err instanceof Error ? err.message : String(err);
