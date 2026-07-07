@@ -53,14 +53,18 @@ export default function DashboardPage() {
   }, [authChecked, activeTab, refreshQuestions]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    // Rely solely on onAuthStateChange (fires once immediately with the current
+    // session, then again on future changes) instead of a separate getSession()
+    // call — running both raced on production when landing here right after the
+    // OAuth redirect, since the URL's #access_token hadn't been parsed into a
+    // session yet when getSession() ran, incorrectly bouncing the user back out.
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
         router.replace("/");
         return;
       }
       if (!isAllowedEmail(session.user.email)) {
-        await supabase.auth.signOut();
-        router.replace("/?error=domain");
+        supabase.auth.signOut().then(() => router.replace("/?error=domain"));
         return;
       }
       const name = session.user.user_metadata?.full_name ?? session.user.email ?? "ユーザー";
@@ -70,16 +74,6 @@ export default function DashboardPage() {
         avatar: name.charAt(0),
       });
       setAuthChecked(true);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        router.replace("/");
-        return;
-      }
-      if (!isAllowedEmail(session.user.email)) {
-        supabase.auth.signOut().then(() => router.replace("/?error=domain"));
-      }
     });
     return () => listener.subscription.unsubscribe();
   }, [router]);

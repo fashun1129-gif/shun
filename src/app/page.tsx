@@ -16,14 +16,15 @@ export default function LoginPage() {
       setError(DOMAIN_RESTRICTION_MESSAGE);
     }
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) return;
       if (!isAllowedEmail(session.user.email)) {
-        await supabase.auth.signOut();
+        supabase.auth.signOut();
         return;
       }
       router.replace("/dashboard");
     });
+    return () => listener.subscription.unsubscribe();
   }, [router]);
 
   const handleGoogleLogin = async () => {
