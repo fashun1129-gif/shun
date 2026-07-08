@@ -100,17 +100,62 @@ ${materialBlock}`;
 }
 
 const BATCH_SIZE = 6;
+// Cap how many groups get merged in a single Claude call. Merging too many
+// batches' worth of sections at once (e.g. all 6+ raw batches for a large
+// subject) reliably makes the model give up and return zero sections, even
+// though each individual batch call succeeds. Keeping every merge call down
+// to a handful of groups — the same way raw documents are batched — avoids
+// that regardless of how large the subject grows.
+const MERGE_GROUP_SIZE = 3;
 
+async function writeSections(subjectId: string, sections: WikiSectionOut[]) {
+  await supabaseAdmin.from("wiki_sections").delete().eq("subject_id", subjectId);
+  await supabaseAdmin.from("wiki_sections").insert(
+    sections.map((s) => ({
+      subject_id: subjectId,
+      heading: s.heading,
+      content: s.content,
+      sources: Array.isArray(s.sources) ? s.sources : [],
+    }))
+  );
+}
+
+function materialBlockFromDocs(docs: DocRow[]): string {
+  return docs.map((d) => `### 資料: ${docLabel(d)}\n${d.extracted_content}`).join("\n\n---\n\n");
+}
+
+function materialBlockFromSections(sections: WikiSectionOut[]): string {
+  return sections
+    .map((s) => `### ${s.heading}\n${s.content}\n（出典: ${Array.isArray(s.sources) ? s.sources.join("、") : ""}）`)
+    .join("\n\n---\n\n");
+}
+
+// Large subjects need many sequential Claude calls (one per raw-document
+// batch, plus one or more merge passes) to build the wiki. Running all of
+// those inside a single request reliably blows past the platform's function
+// time limit. Each request now performs at most one Claude call; the caller
+// drives the whole batch/merge sequence across multiple requests via a
+// queue of section-groups it echoes back on each call:
+//   1. While there are unprocessed raw-document batches, process the next
+//      one and push its resulting sections as a new group onto the queue.
+//   2. Once all raw batches are processed, repeatedly pop up to
+//      MERGE_GROUP_SIZE groups off the front of the queue, merge them into
+//      one group, and push the result to the back — a tree reduce that
+//      keeps any single merge call's input small.
+//   3. Once the queue holds exactly one group, that is the final result.
 export async function POST(req: NextRequest) {
-  let subjectId: string | undefined;
+  let body: { subjectId?: string; rawIndex?: number; queue?: WikiSectionOut[][]; fallback?: boolean };
   try {
-    ({ subjectId } = await req.json());
+    body = await req.json();
   } catch {
     return NextResponse.json({ error: "invalid request body" }, { status: 400 });
   }
+  const { subjectId, fallback } = body;
   if (!subjectId) {
     return NextResponse.json({ error: "subjectId is required" }, { status: 400 });
   }
+  const rawIndex = body.rawIndex ?? 0;
+  const queue = Array.isArray(body.queue) ? [...body.queue] : [];
 
   const { data: subject } = await supabaseAdmin
     .from("subjects")
@@ -126,65 +171,71 @@ export async function POST(req: NextRequest) {
     .not("extracted_content", "is", null);
 
   if (!docs || docs.length === 0) {
-    return NextResponse.json({ ok: true, sections: 0, note: "no analyzed documents yet" });
+    return NextResponse.json({ ok: true, done: true, sections: 0, note: "no analyzed documents yet" });
   }
 
-  let sections: WikiSectionOut[] = [];
+  const batches: DocRow[][] = [];
+  for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+    batches.push(docs.slice(i, i + BATCH_SIZE));
+  }
+
   try {
-    if (docs.length <= BATCH_SIZE) {
-      const materialBlock = docs
-        .map((d) => `### 資料: ${docLabel(d)}\n${d.extracted_content}`)
-        .join("\n\n---\n\n");
-      sections = await buildSections(materialBlock, subjectName, Math.min(6, Math.max(3, Math.floor(docs.length / 2))));
-    } else {
-      // Large subjects (many past-exam years) overwhelm a single pass and the
-      // model silently returns an empty result. Split into smaller batches,
-      // organize each batch on its own, then merge the intermediate results
-      // (much smaller than the raw material) in a final pass.
-      const batches: DocRow[][] = [];
-      for (let i = 0; i < docs.length; i += BATCH_SIZE) {
-        batches.push(docs.slice(i, i + BATCH_SIZE));
+    if (batches.length <= 1) {
+      // Small subject: everything fits in a single pass, same as before.
+      const sections = await buildSections(materialBlockFromDocs(docs), subjectName, Math.min(6, Math.max(3, Math.floor(docs.length / 2))));
+      if (sections.length === 0) {
+        return NextResponse.json(
+          { error: "model returned no sections; existing wiki left untouched" },
+          { status: 502 }
+        );
       }
-
-      const partials: WikiSectionOut[][] = [];
-      for (const batch of batches) {
-        const materialBlock = batch
-          .map((d) => `### 資料: ${docLabel(d)}\n${d.extracted_content}`)
-          .join("\n\n---\n\n");
-        const batchSections = await buildSections(materialBlock, subjectName, 3);
-        partials.push(batchSections);
-      }
-
-      const mergeBlock = partials
-        .flat()
-        .map((s) => `### ${s.heading}\n${s.content}\n（出典: ${s.sources.join("、")}）`)
-        .join("\n\n---\n\n");
-      sections = await buildSections(mergeBlock, subjectName, Math.min(10, Math.max(5, Math.floor(docs.length / 3))));
+      await writeSections(subjectId, sections);
+      return NextResponse.json({ ok: true, done: true, sections: sections.length });
     }
+
+    if (rawIndex < batches.length) {
+      // One raw-document batch per request.
+      const batchSections = await buildSections(materialBlockFromDocs(batches[rawIndex]), subjectName, 3);
+      return NextResponse.json({ ok: true, done: false, rawIndex: rawIndex + 1, queue: [...queue, batchSections] });
+    }
+
+    if (queue.length > 1) {
+      // One merge of up to MERGE_GROUP_SIZE groups per request.
+      const group = queue.slice(0, MERGE_GROUP_SIZE);
+      const rest = queue.slice(MERGE_GROUP_SIZE);
+      // Tree-reducing shrinks the number of groups, but not the total amount
+      // of material — by the last couple of merges, a group carries nearly
+      // everything, and the model occasionally just gives up and returns no
+      // sections instead of truncating. The caller retries a step a few
+      // times before setting `fallback`; when set, skip the AI merge for
+      // this step and concatenate the groups as-is (topic headings may
+      // duplicate across groups) so consolidation always finishes rather
+      // than getting stuck indefinitely on an oversized merge.
+      const mergedSections = fallback
+        ? group.flat()
+        : await buildSections(materialBlockFromSections(group.flat()), subjectName, 3);
+      if (mergedSections.length === 0) {
+        return NextResponse.json(
+          { error: "model returned no sections; existing wiki left untouched" },
+          { status: 502 }
+        );
+      }
+      return NextResponse.json({ ok: true, done: false, rawIndex, queue: [...rest, mergedSections] });
+    }
+
+    // Queue holds exactly one group: that is the final result.
+    const sections = queue[0] ?? [];
+    if (sections.length === 0) {
+      return NextResponse.json(
+        { error: "model returned no sections; existing wiki left untouched" },
+        { status: 502 }
+      );
+    }
+    await writeSections(subjectId, sections);
+    return NextResponse.json({ ok: true, done: true, sections: sections.length });
   } catch (err) {
     console.error("Wiki consolidation failed", err);
     const reason = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `AI consolidation failed: ${reason}` }, { status: 502 });
   }
-
-  if (sections.length === 0) {
-    // Never wipe existing sections based on an empty result — treat it as a
-    // failed attempt so the caller can retry instead of silently losing data.
-    return NextResponse.json(
-      { error: "model returned no sections; existing wiki left untouched" },
-      { status: 502 }
-    );
-  }
-
-  await supabaseAdmin.from("wiki_sections").delete().eq("subject_id", subjectId);
-  await supabaseAdmin.from("wiki_sections").insert(
-    sections.map((s) => ({
-      subject_id: subjectId,
-      heading: s.heading,
-      content: s.content,
-      sources: Array.isArray(s.sources) ? s.sources : [],
-    }))
-  );
-
-  return NextResponse.json({ ok: true, sections: sections.length });
 }

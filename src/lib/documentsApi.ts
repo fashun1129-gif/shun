@@ -58,15 +58,49 @@ export async function triggerAnalysis(documentId: string): Promise<void> {
   }
 }
 
+const MAX_STEP_ATTEMPTS = 3;
+
 export async function triggerWikiConsolidation(subjectId: string): Promise<void> {
-  const res = await fetch("/api/consolidate-wiki", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ subjectId }),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `wiki consolidation failed (${res.status})`);
+  // Large subjects need many sequential Claude calls (per raw-document batch,
+  // plus one or more merge passes) to build the wiki. The server bounds each
+  // request to a single call and reduces the batch results via a queue-based
+  // tree merge, so this drives that whole sequence across multiple requests
+  // instead of letting one request run them all and risk a platform timeout.
+  //
+  // The model occasionally returns an empty section list for a merge (a
+  // known failure the server guards against by leaving existing data
+  // untouched) — retry the same step a few times before giving up, rather
+  // than re-running the whole (expensive) sequence from scratch. By the
+  // final merge, a group can carry nearly the whole subject's material, so
+  // this isn't always transient: the last attempt asks the server to fall
+  // back to a plain concatenation instead of an AI merge, trading a
+  // possible duplicate heading for guaranteed forward progress.
+  let rawIndex = 0;
+  let queue: unknown[] = [];
+  for (;;) {
+    let lastError: string | undefined;
+    let succeeded = false;
+    for (let attempt = 0; attempt < MAX_STEP_ATTEMPTS; attempt++) {
+      const fallback = attempt === MAX_STEP_ATTEMPTS - 1;
+      const res = await fetch("/api/consolidate-wiki", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subjectId, rawIndex, queue, fallback }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.done) return;
+        rawIndex = data.rawIndex;
+        queue = data.queue;
+        succeeded = true;
+        break;
+      }
+      const body = await res.json().catch(() => ({}));
+      lastError = body.error ?? `wiki consolidation failed (${res.status})`;
+    }
+    if (!succeeded) {
+      throw new Error(lastError ?? "wiki consolidation failed");
+    }
   }
 }
 
