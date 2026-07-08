@@ -9,6 +9,10 @@ const supabaseAdmin = createClient(
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
+// Consolidation can loop over many stored summaries per subject and
+// routinely exceeds Vercel's default function timeout (10-15s).
+export const maxDuration = 300;
+
 const DOC_TYPE_LABEL: Record<string, string> = {
   past_exam: "過去問",
   resume: "授業レジュメ",

@@ -9,6 +9,10 @@ const supabaseAdmin = createClient(
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
+// RAG-backed chat replies can take a while to generate and can otherwise
+// exceed Vercel's default function timeout (10-15s).
+export const maxDuration = 60;
+
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
 export async function POST(req: NextRequest) {

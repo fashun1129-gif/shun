@@ -10,6 +10,11 @@ const supabaseAdmin = createClient(
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
+// PDF analysis via Claude routinely exceeds Vercel's default function
+// timeout (10-15s), which aborts the request after the file is already
+// saved — surfacing as "save succeeded, analysis failed" in the UI.
+export const maxDuration = 300;
+
 const DOC_TYPE_LABEL: Record<string, string> = {
   past_exam: "過去問",
   resume: "授業レジュメ",
@@ -87,7 +92,7 @@ export async function POST(req: NextRequest) {
   try {
     const stream = anthropic.messages.stream({
       model: "claude-sonnet-5",
-      max_tokens: 12000,
+      max_tokens: 32000,
       tools: [
         {
           name: "extract_study_material",
