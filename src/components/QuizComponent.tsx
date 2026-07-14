@@ -9,14 +9,24 @@ type Props = {
   onResult: (results: { questionId: string; correct: boolean }[]) => void;
 };
 
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 export default function QuizComponent({ questions, subjectName, onResult }: Props) {
+  const [shuffled, setShuffled] = useState(() => shuffle(questions));
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [results, setResults] = useState<{ questionId: string; correct: boolean }[]>([]);
   const [finished, setFinished] = useState(false);
 
-  const q = questions[current];
+  const q = shuffled[current];
 
   const handleSelect = useCallback((idx: number) => {
     if (selected !== null) return;
@@ -26,7 +36,7 @@ export default function QuizComponent({ questions, subjectName, onResult }: Prop
   }, [selected, q]);
 
   const handleNext = useCallback(() => {
-    if (current + 1 >= questions.length) {
+    if (current + 1 >= shuffled.length) {
       setFinished(true);
       onResult([...results]);
     } else {
@@ -34,9 +44,10 @@ export default function QuizComponent({ questions, subjectName, onResult }: Prop
       setSelected(null);
       setShowExplanation(false);
     }
-  }, [current, questions.length, results, onResult]);
+  }, [current, shuffled.length, results, onResult]);
 
   const handleRestart = () => {
+    setShuffled(shuffle(questions));
     setCurrent(0);
     setSelected(null);
     setShowExplanation(false);
@@ -46,7 +57,7 @@ export default function QuizComponent({ questions, subjectName, onResult }: Prop
 
   if (finished) {
     const correct = results.filter((r) => r.correct).length;
-    const pct = Math.round((correct / questions.length) * 100);
+    const pct = Math.round((correct / shuffled.length) * 100);
     return (
       <div className="animate-fade-in text-center py-8">
         <div className="text-6xl mb-4">{pct >= 80 ? "🎉" : pct >= 60 ? "📈" : "📚"}</div>
@@ -55,7 +66,7 @@ export default function QuizComponent({ questions, subjectName, onResult }: Prop
         <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-indigo-50 border-4 border-indigo-200 mb-6">
           <div>
             <div className="text-3xl font-bold text-indigo-600">{pct}%</div>
-            <div className="text-sm text-gray-500">{correct}/{questions.length} 正解</div>
+            <div className="text-sm text-gray-500">{correct}/{shuffled.length} 正解</div>
           </div>
         </div>
         <div className="flex gap-3 justify-center">
@@ -71,9 +82,9 @@ export default function QuizComponent({ questions, subjectName, onResult }: Prop
     <div className="animate-fade-in">
       {/* Progress */}
       <div className="flex items-center justify-between mb-4">
-        <span className="text-sm text-gray-500">{current + 1} / {questions.length} 問</span>
+        <span className="text-sm text-gray-500">{current + 1} / {shuffled.length} 問</span>
         <div className="flex gap-1">
-          {questions.map((_, i) => (
+          {shuffled.map((_, i) => (
             <div key={i} className={`h-1.5 w-8 rounded-full transition-colors ${
               i < current ? "bg-indigo-400" : i === current ? "bg-indigo-600" : "bg-gray-200"
             }`} />
@@ -140,7 +151,7 @@ export default function QuizComponent({ questions, subjectName, onResult }: Prop
 
       {selected !== null && (
         <button onClick={handleNext} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-semibold hover:bg-indigo-700 transition-colors">
-          {current + 1 >= questions.length ? "結果を確認" : "次の問題へ →"}
+          {current + 1 >= shuffled.length ? "結果を確認" : "次の問題へ →"}
         </button>
       )}
     </div>
