@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { subjects, Question } from "@/lib/mockData";
 import { listQuestionsBySubject } from "@/lib/questionsApi";
+import { listQuizResults, saveQuizResults, QuizResult } from "@/lib/quizResultsApi";
 import QuizComponent from "@/components/QuizComponent";
 import WikiComponent from "@/components/WikiComponent";
 import AIChatComponent from "@/components/AIChatComponent";
@@ -14,13 +15,6 @@ import { clearSession, getSession } from "@/lib/session";
 
 type Tab = "quiz" | "wiki" | "ai-chat" | "weakness" | "upload";
 
-type QuizResult = {
-  questionId: string;
-  subject: string;
-  correct: boolean;
-  timestamp: number;
-};
-
 type CurrentUser = {
   name: string;
   avatar: string;
@@ -29,6 +23,7 @@ type CurrentUser = {
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<CurrentUser | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState(subjects[0].id);
   const [activeTab, setActiveTab] = useState<Tab>("quiz");
@@ -60,6 +55,8 @@ export default function DashboardPage() {
       name: session.displayName,
       avatar: session.displayName.charAt(0),
     });
+    setUserId(session.userId);
+    listQuizResults(session.userId).then(setQuizResults);
     setAuthChecked(true);
   }, [router]);
 
@@ -78,7 +75,8 @@ export default function DashboardPage() {
       timestamp: Date.now(),
     }));
     setQuizResults((prev) => [...prev, ...newResults]);
-  }, [selectedSubject]);
+    if (userId) saveQuizResults(userId, selectedSubject, results);
+  }, [selectedSubject, userId]);
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: "quiz", label: "クイズ", icon: "📝" },
